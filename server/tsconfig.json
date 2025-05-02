@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "outDir": "./dist",
+    "target": "es2016",
+    "module": "commonjs",
+    "lib": [
+      "es2021",
+      "dom"
+    ],
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": "./",
+    "paths": {
+        "@/*": ["src/*"]
+      }
+    },
+    "ts-node": {
+      "require": ["tsconfig-paths/register"]
+    },
+    "include": ["src"],
+    "exclude": ["./dist", "node_modules"],
+  }
