@@ -29,7 +29,7 @@ export class PostRepository {
       }
 
       return postDto.data;
-    }).filter((post) => post !== false);
+    }).filter(Boolean);
     
     return {
       posts,
