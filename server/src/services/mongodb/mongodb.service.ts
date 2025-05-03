@@ -1,14 +1,12 @@
 
 import { Db, MongoClient, ServerApiVersion } from 'mongodb';
-import mongodbConfig from './mongodb.config';
+import { mongoDbUri } from './mongodb.config';
 import 'dotenv/config';
 import { LoggerService } from '@/services/logger/logger.service';
 
 const logger = new LoggerService();
 
-const uri = `mongodb+srv://${mongodbConfig.mongodbUser}:${mongodbConfig.mongodbPassword}@cluster0.gyizz7f.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-const client = new MongoClient(uri, {
+const client = new MongoClient(mongoDbUri(), {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
