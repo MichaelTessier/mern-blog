@@ -24,7 +24,6 @@ class PostController {
         key: data,
         message: `Error when get post by id ${req.params.id}`,
       });
-
       throw error;
     }
 

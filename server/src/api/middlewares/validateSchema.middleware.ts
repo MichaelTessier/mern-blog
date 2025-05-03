@@ -10,11 +10,12 @@ export class ValidateSchemaMiddleware {
     this.logger = new LoggerService();
   }
 
-
   params = (schema: ZodSchema) => (req: Request, _res: Response, next: NextFunction) => {
     const schemaResult = schema.safeParse(req.params);
+
     if (!schemaResult.success) {
       this.logger.error(`Params validation failed: ${schemaResult.error.issues[0].message}`);
+      
       throw new InvalidInputError({
         message: schemaResult.error.issues[0].message,
         key: ERRORS_KEY.INVALID_INPUT,  

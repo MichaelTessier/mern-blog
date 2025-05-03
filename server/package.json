@@ -4,6 +4,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "mongodb": "^6.16.0",
+    "supertest": "^7.1.0",
     "winston": "^3.17.0",
     "zod": "^3.24.3"
   },
@@ -11,15 +12,24 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/node": "^22.15.2",
+    "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "3.1.2",
+    "@vitest/ui": "3.1.2",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2",
+    "vitest-mock-extended": "^3.1.0"
   },
   "scripts": {
     "dev": "nodemon --watch src -e js,ts,json --exec \"ts-node src/index.ts\"",
     "build": "tsup src/index.ts --format cjs --clean",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui --coverage.enabled=true",
+    "test:run": "vitest run",
+    "coverage": "vitest run --coverage"
   }
 }

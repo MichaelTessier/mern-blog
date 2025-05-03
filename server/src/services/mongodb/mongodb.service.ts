@@ -2,7 +2,7 @@
 import { Db, MongoClient, ServerApiVersion } from 'mongodb';
 import mongodbConfig from './mongodb.config';
 import 'dotenv/config';
-import { LoggerService } from '../logger/logger.service';
+import { LoggerService } from '@/services/logger/logger.service';
 
 const logger = new LoggerService();
 

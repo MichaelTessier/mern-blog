@@ -14,10 +14,6 @@ app.use(express.urlencoded({ extended: true }))
 app.use(postRoutes);
 app.use(errorHandler);
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
 const server = app.listen(serverConfig.serverPort, () => {
   logger.info(`Server is running on port ${serverConfig.serverPort}`);
 });
