@@ -1,44 +1,13 @@
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 import request from 'supertest';
 import router from '../post.route';
-import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { postController } from '../post.controller';
+import { postController } from '@/api/post/post.controller';
 import { validateSchemaMiddleware } from '@/api/middlewares/validateSchema.middleware';
 import { database } from '@/services/mongodb/mongodb.service';
 
-
-vi.mock('@/services/mongodb/mongodb.service', () => ({
-  database: {
-    connect: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockReturnValue({
-      collection: vi.fn().mockReturnThis(),
-      find: vi.fn(),
-      findOne: vi.fn(),
-      findOneAndUpdate: vi.fn(),
-      insertOne: vi.fn(),
-      deleteOne: vi.fn(),
-    }),
-  },
-}));
-
-
-vi.mock('../post.controller', () => ({
-  postController: {
-    list: vi.fn((req, res) => res.status(200).json({ message: 'list called' })),
-    getById: vi.fn((req, res) => res.status(200).json({ message: 'getById called' })),
-    create: vi.fn((req, res) => res.status(201).json({ message: 'create called' })),
-    update: vi.fn((req, res) => res.status(200).json({ message: 'update called' })),
-    delete: vi.fn((req, res) => res.status(204).end()),
-  },
-}));
-
-vi.mock('@/api/middlewares/validateSchema.middleware', () => ({
-  validateSchemaMiddleware: {
-    params: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next()),
-    request: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next()),
-  },
-}));
-
+vi.mock('@/services/mongodb/mongodb.service');
+vi.mock('@/api/post/post.controller');
+vi.mock('@/api/middlewares/validateSchema.middleware');
 
 const app = express();
 app.use(express.json());

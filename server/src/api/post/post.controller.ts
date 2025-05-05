@@ -78,7 +78,7 @@ class PostController {
       throw error;
     }
 
-    res.status(204).json();
+    res.status(204).json(); // end() ??
   }
 }
 

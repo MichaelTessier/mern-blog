@@ -1,8 +1,5 @@
 import { ObjectId } from "mongodb";
-import { describe, expect, it } from "vitest";
 import { PostDTO, postDTOSchema, postEntitySchema, postIdParamSchema } from "../post.schema";
-import { a } from "vitest/dist/chunks/suite.d.FvehnV49";
-
 
 describe('Post Schema', () => {
 

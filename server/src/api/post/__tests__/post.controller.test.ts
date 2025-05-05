@@ -1,19 +1,9 @@
-import { describe, it, vi, expect } from "vitest";
-import { mock } from 'vitest-mock-extended';
 import { postController } from "../post.controller";
 import { PostRepository } from "../post.repository";
 import { Request, Response } from "express";
-import { ConflictError, CustomError, ERRORS_KEY, NotFoundError } from "@/api/errorHandler";
+import { ConflictError, ERRORS_KEY, NotFoundError } from "@/api/errorHandler";
 
-vi.mock('../post.repository', () => ({
-  PostRepository: class {
-    findPosts = vi.fn();
-    findPostById = vi.fn();
-    create = vi.fn();
-    update = vi.fn();
-    delete = vi.fn();
-  },
-}));
+vi.mock('../post.repository');
 
 describe('Post Controller', () => {
   const mockPostRepository = vi.mocked(new PostRepository());

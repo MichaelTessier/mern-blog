@@ -7,7 +7,7 @@ export default defineConfig({
     globals: true,
     include: ['**/**.test.{js,ts}'],
     coverage: {
-      provider: 'v8', // ou 'istanbul'
+      provider: 'v8',
       reporter: ['html'],
     },
   },

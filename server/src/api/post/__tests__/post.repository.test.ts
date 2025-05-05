@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, afterEach } from "vitest";
 import { PostRepository } from '@/api/post/post.repository';
-import { database } from '@/services/mongodb/mongodb.service';       
+import { mockDb } from '@/services/mongodb/__mocks__/mongodb.service'; 
+
 import { ObjectId } from 'mongodb';
 import { ERRORS_KEY } from "@/api/errorHandler";
 import { PostDTO } from "../post.schema";
@@ -8,22 +9,22 @@ import { PostDTO } from "../post.schema";
 vi.mock('@/services/mongodb/mongodb.service');
 
 describe('PostRepository', () => {
-  const mockDb = {
-    collection: vi.fn().mockReturnThis(),
-    find: vi.fn(),
-    findOne: vi.fn(),
-    findOneAndUpdate: vi.fn(),
-    insertOne: vi.fn(),
-    deleteOne: vi.fn(),
-  };
-  database.get = vi.fn().mockReturnValue(mockDb);
-
   const repository = new PostRepository();
 
+  beforeEach(() => {
+    mockDb.find.mockReset();
+    mockDb.findOne.mockReset();
+    mockDb.insertOne.mockReset();
+    mockDb.deleteOne.mockReset();
+
+    vi.spyOn(PostDTO, 'toDomainEntity').mockImplementation(() => ({
+      success: true,
+      data: { id: '6813c4c9fd33f0e52d13dc68', title: 'Test', description: 'Test', content: 'Test', author: '123' },
+    }));
+  });
+
   afterEach(() => {
-    vi.resetAllMocks();
-    mockDb.collection.mockReturnValue(mockDb);
-    mockDb.find.mockReturnValue(mockDb);
+    vi.clearAllMocks();
   })
 
   describe('findPosts', () => {
@@ -58,7 +59,7 @@ describe('PostRepository', () => {
 
   describe('create', () => {
     it('should insert a new post', async () => {
-      mockDb.insertOne.mockResolvedValue({ acknowledged: true, insertedId: '123' });
+      mockDb.insertOne.mockResolvedValue({ acknowledged: true, insertedId: '6813c4c9fd33f0e52d13dc68'});
       
       const result = await repository.create({ title: 'Test', description: 'Test', content: 'Test', author: '123' });
       

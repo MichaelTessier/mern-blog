@@ -1,7 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { isErrorKey, ERRORS_KEY, CustomError, setErrorResponse, errorHandler } from './errorHandler';
 import { Response, Request, NextFunction } from "express";
-import * as errorHandlerModule from './errorHandler';
 
 describe('Error Handler', () => {
   const res = {
@@ -11,13 +9,7 @@ describe('Error Handler', () => {
 
   const req = {} as Request
 
-  // Mock the next function
   const next = vi.fn() as NextFunction;
-
-
-  // afterEach(() => {
-  //   mockSetErrorResponse.mockRestore(); 
-  // });
 
   describe('isErrorKey', () => {
     it('should return true for valid error keys', () => {
