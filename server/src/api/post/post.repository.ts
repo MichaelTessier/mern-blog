@@ -3,7 +3,6 @@ import { database } from "@/services/mongodb/mongodb.service";
 import { Db, ObjectId } from "mongodb";
 import { PostEntity, PostDTOList, PostDTO, PostCreateDTO, PostUpdateDTO } from "./post.schema";
 import { ErrorKey, ERRORS_KEY } from "../errorHandler";
-
 export class PostRepository {
   private logger: LoggerService;
   private db: Db
@@ -20,7 +19,7 @@ export class PostRepository {
 
     this.logger.info(`Fetched ${data.length} posts`);
 
-    const posts = data.map((post) => {
+    const posts = data?.map((post) => {
       const postDto = PostDTO.toDomainEntity(post)
 
       if (!postDto.success) {
@@ -29,7 +28,7 @@ export class PostRepository {
       }
 
       return postDto.data;
-    }).filter(Boolean);
+    }).filter(Boolean) ?? []
     
     return {
       posts,
@@ -37,7 +36,7 @@ export class PostRepository {
   }
 
   findPostById = async (id: string): Promise<PostDTO | ErrorKey> => {
-    const data = await this.getPostsCollection().findOne({ _id: new ObjectId(id)})
+    const data = await this.getPostsCollection().findOne({ _id: new ObjectId(id) })
 
     if (!data) {
       this.logger.error(`Post with id ${id} not found`);
