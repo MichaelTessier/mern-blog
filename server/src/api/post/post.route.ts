@@ -1,7 +1,7 @@
 import express from 'express';
+import { validateSchemaMiddleware } from '@/api/middlewares/validateSchema.middleware';
 import { postController } from './post.controller';
-import { validateSchemaMiddleware } from '../middlewares/validateSchema.middleware';
-import { postCreateDtoSchema, postIdParamSchema, postUpdateDtoSchema } from './post.schema';
+import { postCreateDTOSchema, postIdParamSchema, postUpdateDTOSchema } from './post.schema';
 
 const router = express.Router();
 
@@ -17,14 +17,14 @@ router.get(
 );
 
 router.post('/posts', 
-  validateSchemaMiddleware.request(postCreateDtoSchema), 
+  validateSchemaMiddleware.request(postCreateDTOSchema), 
   postController.create
 );
 
 router.patch(
   '/posts/:id', 
   validateSchemaMiddleware.params(postIdParamSchema), 
-  validateSchemaMiddleware.request(postUpdateDtoSchema), 
+  validateSchemaMiddleware.request(postUpdateDTOSchema), 
   postController.update
 );
 

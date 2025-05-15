@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
+import { createErrorFromKey, isErrorKey } from "@/api/errorHandler";
 import { PostRepository } from "./post.repository";
-import { PostCreateDTO, PostIdParam } from "./post.schema";
-import { createErrorFromKey, isErrorKey } from "../errorHandler";
+import { PostCreateDTO, PostIdParam, PostUpdateDTO } from "./post.schema";
 
 class PostController {
   private postRepository: PostRepository;
@@ -24,6 +24,7 @@ class PostController {
         key: data,
         message: `Error when get post by id ${req.params.id}`,
       });
+
       throw error;
     }
 
@@ -47,7 +48,7 @@ class PostController {
     res.status(201).json(data);
   }
 
-  public update = async (req: Request<PostIdParam, {}, PostCreateDTO>, res: Response) => {
+  public update = async (req: Request<PostIdParam, {}, PostUpdateDTO>, res: Response) => {
     const data = await this.postRepository.update(req.params.id, req.body);
 
     if(isErrorKey(data)) {

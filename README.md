@@ -4,8 +4,11 @@
 
   - add zod open api client
     - https://github.com/astahmer/openapi-zod-client
+  - Error improve log
+    - Pass message from repository to error handler
   - add open-api
   - add swagger
   - add mongo migrations 
   - check https://www.prisma.io/docs/orm/overview/databases/mongodb
   - add Eslint
+  - add pagination 

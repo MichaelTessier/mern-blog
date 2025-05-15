@@ -1,8 +1,9 @@
 import { LoggerService } from "@/services/logger/logger.service";
 import { database } from "@/services/mongodb/mongodb.service";
 import { Db, ObjectId } from "mongodb";
-import { PostEntity, PostDTOList, PostDTO, PostCreateDTO, PostUpdateDTO } from "./post.schema";
+import { PostEntity, PostDTOList, PostDTO, PostCreateDTO, PostUpdateDTO, PostEntityAggregated, PostDTOMapper, PostCreateDTOMapper, PostUpdateDTOMapper } from "./post.schema";
 import { ErrorKey, ERRORS_KEY } from "../errorHandler";
+
 export class PostRepository {
   private logger: LoggerService;
   private db: Db
@@ -14,20 +15,40 @@ export class PostRepository {
 
   private getPostsCollection = () => this.db.collection<PostEntity>("posts");
 
-  findPosts = async (): Promise<PostDTOList> => {
-    const data = await this.getPostsCollection().find().toArray();
+  findPosts = async (): Promise<PostDTOList | ErrorKey | any> => {
+    const data = await this.getPostsCollection().aggregate<PostEntityAggregated>([
+      {
+        $lookup: {
+          from: 'authors',
+          localField: 'authorId',
+          foreignField: '_id',
+          as: 'author',
+        },
+      },
+      {
+        $addFields: {
+          author: { $arrayElemAt: ['$author', 0] },
+        }
+      }
+    ]).toArray();
+
+    
+    if(!data) {
+      this.logger.error(`Posts not found`);
+      return ERRORS_KEY.NOT_FOUND;
+    }
 
     this.logger.info(`Fetched ${data.length} posts`);
 
     const posts = data?.map((post) => {
-      const postDto = PostDTO.toDomainEntity(post)
+      const postDTO = PostDTOMapper.toDomain(post)
 
-      if (!postDto.success) {
-        this.logger.error(`PostDTO validation failed: ${postDto.error}`);
+      if (!postDTO.success) {
+        this.logger.error(`PostDTO validation failed: ${postDTO.error}`);
         return false
       }
 
-      return postDto.data;
+      return postDTO.data;
     }).filter(Boolean) ?? []
     
     return {
@@ -36,69 +57,156 @@ export class PostRepository {
   }
 
   findPostById = async (id: string): Promise<PostDTO | ErrorKey> => {
-    const data = await this.getPostsCollection().findOne({ _id: new ObjectId(id) })
-
-    if (!data) {
+    const data = await this.getPostsCollection()
+      .aggregate<PostEntityAggregated>([
+        {
+          $match: {
+            _id: new ObjectId(id),
+          }
+        },
+        {
+          $lookup: {
+            from: 'authors',
+            localField: 'authorId',
+            foreignField: '_id',
+            as: 'author',
+          },
+        },
+        {
+          $addFields: {
+            author: { $arrayElemAt: ['$author', 0] },
+          }
+        }
+      ])
+      .toArray();
+    
+    if (!data?.length) {
       this.logger.error(`Post with id ${id} not found`);
       return ERRORS_KEY.NOT_FOUND;
     }
 
-    const postDto = PostDTO.toDomainEntity(data)
+    const postDTO = PostDTOMapper.toDomain(data[0])
 
-    if(!postDto.success) {
-      this.logger.error(`PostDTO validation failed: ${postDto.error}`);
+    if(!postDTO.success) {
+      this.logger.error(`PostDTO validation failed: ${postDTO.error}`);
       return ERRORS_KEY.VALIDATION
     }
 
-    return postDto.data;
+    return postDTO.data;
   }
 
   create = async(post: PostCreateDTO): Promise<PostDTO | ErrorKey> => {
-    const postEntity = {
-      ...post,
-      _id: new ObjectId(),
+    const postEntity = PostCreateDTOMapper.toEntity(post)
+
+    if (!postEntity.success) {
+      this.logger.error(`PostDTO validation failed: ${postEntity.error}`);
+      return ERRORS_KEY.VALIDATION
     }
 
-    const data = await this.getPostsCollection().insertOne(postEntity);
+    const postInserted = await this.getPostsCollection().insertOne(postEntity.data, {
+      forceServerObjectId: true,
+    });
 
-    if (!data.acknowledged) {
+    if (!postInserted.acknowledged) {
       this.logger.error(`Failed to create post`);
       return ERRORS_KEY.CONFLICT;
     }
 
-    const postDto = PostDTO.toDomainEntity(postEntity)
+    this.logger.info(`Post created with id ${postInserted.insertedId}`);
 
-    if(!postDto.success) {
-      this.logger.error(`PostDTO validation failed: ${postDto.error}`);
+    const data = await this.getPostsCollection()
+      .aggregate<PostEntityAggregated>([
+        {
+          $match: {
+            _id: postInserted.insertedId,
+          }
+        },
+        {
+          $lookup: {
+            from: 'authors',
+            localField: 'authorId',
+            foreignField: '_id',
+            as: 'author',
+          },
+        },
+        {
+          $addFields: {
+            author: { $arrayElemAt: ['$author', 0] },
+          }
+        }
+      ])
+      .toArray();
+
+    if (!data?.length) {
+      this.logger.error(`Post with id ${postInserted.insertedId} not found`);
+      return ERRORS_KEY.NOT_FOUND;
+    }
+
+    const postDTO = PostDTOMapper.toDomain(data[0])
+
+    if(!postDTO.success) {
+      this.logger.error(`PostDTO validation failed: ${postDTO.error}`);
       return ERRORS_KEY.VALIDATION
     }
 
-    this.logger.info(`Post created with id ${data.insertedId}`);
-
-    return postDto.data;
+    return postDTO.data;
 
   }
 
   update = async(id: string, post: PostUpdateDTO) : Promise<PostDTO | ErrorKey> => {
-    const data = await this.getPostsCollection().findOneAndUpdate(
+    const postEntity = PostUpdateDTOMapper.toEntity(post)
+
+    if (!postEntity.success) {
+      this.logger.error(`PostUpdateDTO validation failed: ${postEntity.error}`);
+      return ERRORS_KEY.VALIDATION
+    }
+
+    const postUpdated = await this.getPostsCollection().updateOne(
       { _id: new ObjectId(id) },
-      { $set: post },
-      { returnDocument: "after" }
+      { $set: postEntity.data },
     )
 
-    if (!data) {
+    if (!postUpdated.matchedCount) {
       this.logger.error(`Failed to update post with id ${id}`);
       return ERRORS_KEY.NOT_FOUND;
     }
 
-    const postDto = PostDTO.toDomainEntity(data)
+    const data = await this.getPostsCollection()
+      .aggregate<PostEntityAggregated>([
+        {
+          $match: {
+            _id: new ObjectId(id),
+          }
+        },
+        {
+          $lookup: {
+            from: 'authors',
+            localField: 'authorId',
+            foreignField: '_id',
+            as: 'author',
+          },
+        },
+        {
+          $addFields: {
+            author: { $arrayElemAt: ['$author', 0] },
+          }
+        }
+      ])
+      .toArray();
 
-    if(!postDto.success) {
-      this.logger.error(`PostDTO validation failed: ${postDto.error}`);
+    if (!data?.length) {
+      this.logger.error(`Post with id ${new ObjectId(id)} not found`);
+      return ERRORS_KEY.NOT_FOUND;
+    }
+    
+    const postDTO = PostDTOMapper.toDomain(data[0])
+      
+    if(!postDTO.success) {
+      this.logger.error(`PostDTO validation failed: ${postDTO.error}`);
       return ERRORS_KEY.VALIDATION
     }
 
-    return postDto.data;
+    return postDTO.data;
   }
 
   delete = async(id: string) : Promise<void | ErrorKey> => {

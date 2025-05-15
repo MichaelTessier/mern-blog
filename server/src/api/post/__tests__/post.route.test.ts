@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(router);
 
 
-describe('GET /posts', () => {
+describe('Post Routes', () => {
 
   beforeAll(async () => {
     await database.connect();

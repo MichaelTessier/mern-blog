@@ -10,7 +10,7 @@ describe('Post Schema', () => {
         title: 'Valid Title',
         description: 'Valid Description',
         content: 'Valid Content',
-        author: 'Valid Author',
+        authorId: new ObjectId(),
       }
       
       const result = postEntitySchema.safeParse(validPost);
@@ -40,12 +40,16 @@ describe('Post Schema', () => {
         title: 'Valid Title',
         description: 'Valid Description',
         content: 'Valid Content', 
-        author: 'Valid Author',
       } 
 
       const result = postDTOSchema.safeParse(validPostDTO);
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(validPostDTO);
+      expect(result.data).toEqual({
+        id: '1',
+        title: 'Valid Title',
+        description: 'Valid Description',
+        content: 'Valid Content', 
+      } );
     })
 
     it('should invalidate post DTO schema with missing fields', () => {

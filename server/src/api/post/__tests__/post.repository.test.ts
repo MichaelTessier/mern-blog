@@ -4,7 +4,7 @@ import { mockDb } from '@/services/mongodb/__mocks__/mongodb.service';
 
 import { ObjectId } from 'mongodb';
 import { ERRORS_KEY } from "@/api/errorHandler";
-import { PostDTO } from "../post.schema";
+import { PostDTO, PostDTOList } from "../post.schema";
 
 vi.mock('@/services/mongodb/mongodb.service');
 
@@ -31,7 +31,7 @@ describe('PostRepository', () => {
     it('should fetch all posts', async () => {
       mockDb.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) });
 
-      const result = await repository.findPosts();
+      const result = await repository.findPosts() as PostDTOList; 
       
       expect(result.posts).toEqual([]);
 
