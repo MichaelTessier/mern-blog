@@ -2,58 +2,48 @@ import { postController } from "../post.controller";
 import { PostRepository } from "../post.repository";
 import { Request, Response } from "express";
 import { ConflictError, ERRORS_KEY, NotFoundError } from "@/api/errorHandler";
+import { postData } from "../__data__";
 
 vi.mock('../post.repository');
 
 describe('Post Controller', () => {
   const mockPostRepository = vi.mocked(new PostRepository());
   postController['postRepository'] = mockPostRepository ;
-  const mockPost = { id: '1', title: 'Post 1', content: 'Content 1', description : 'Description 1', author: 'Author' }
+
+  const req = { params: { id: '1' }, body: postData.postDTO } as Request<{id: string}, {}, typeof postData.postDTO>;
+  const res = {
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
+  } as Partial<Response> as Response;
 
   describe('list', () => {  
     it('should return all posts', async () => {
-      const mockPosts = [mockPost];
 
-      mockPostRepository.findPosts.mockResolvedValue({ posts: mockPosts});
+      const mockResponse = { posts: [postData.postDTO]}
 
-      const req = {} as Request;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
+      mockPostRepository.findPosts.mockResolvedValue({ posts: [postData.postDTO]});
 
       await postController.list(req, res);
 
       expect(mockPostRepository.findPosts).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ posts: mockPosts});
+      expect(res.json).toHaveBeenCalledWith(mockResponse);
     });
   });
 
   describe('getById', () => {
     it('should return a post by ID', async () => {
-      mockPostRepository.findPostById.mockResolvedValue(mockPost);
-      const req = { params: { id: '1' } } as Request<{id: string}>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
+      mockPostRepository.findPostById.mockResolvedValue(postData.postDTO);
 
       await postController.getById(req, res);
 
       expect(mockPostRepository.findPostById).toHaveBeenCalledWith('1');
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockPost);
+      expect(res.json).toHaveBeenCalledWith(postData.postDTO);
     });
 
     it('should throw an error if post not found', async () => {
       mockPostRepository.findPostById.mockResolvedValue(ERRORS_KEY.NOT_FOUND);
-
-      const req = { params: { id: '1' } } as Request<{id: string}>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
 
       const error = {
         key: ERRORS_KEY.NOT_FOUND,
@@ -68,30 +58,18 @@ describe('Post Controller', () => {
 
   describe('create', () => {
     it('should create a new post', async () => {
-      const req = { body: mockPost } as Request<{}, {}, typeof mockPost>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
-
-      mockPostRepository.create.mockResolvedValue(mockPost);
+      mockPostRepository.create.mockResolvedValue(postData.postDTO);
 
       await postController.create(req, res);
 
-      expect(mockPostRepository.create).toHaveBeenCalledWith(mockPost);
+      expect(mockPostRepository.create).toHaveBeenCalledWith(postData.postDTO);
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(mockPost);
+      expect(res.json).toHaveBeenCalledWith(postData.postDTO);
       
     });
 
     it('should throw an error if post creation fails', async () => {
       mockPostRepository.create.mockResolvedValue(ERRORS_KEY.CONFLICT);
-
-      const req = { body: mockPost } as Request<{}, {}, typeof mockPost>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
 
       const error = {
         key: ERRORS_KEY.CONFLICT,
@@ -106,29 +84,17 @@ describe('Post Controller', () => {
 
   describe('update', () => {
     it('should update an existing post', async () => {
-      const req = { params: { id: '1' }, body: mockPost } as Request<{id: string}, {}, typeof mockPost>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
-
-      mockPostRepository.update.mockResolvedValue(mockPost);
+      mockPostRepository.update.mockResolvedValue(postData.postDTO);
 
       await postController.update(req, res);
 
-      expect(mockPostRepository.update).toHaveBeenCalledWith('1', mockPost);
+      expect(mockPostRepository.update).toHaveBeenCalledWith('1', postData.postDTO);
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(mockPost);
+      expect(res.json).toHaveBeenCalledWith(postData.postDTO);
     });
 
     it('should throw an error if post update fails', async () => {
       mockPostRepository.update.mockResolvedValue(ERRORS_KEY.NOT_FOUND);
-
-      const req = { params: { id: '1' }, body: mockPost } as Request<{id: string}, {}, typeof mockPost>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
 
       const error = {
         key: ERRORS_KEY.NOT_FOUND,
@@ -143,12 +109,6 @@ describe('Post Controller', () => {
 
   describe('delete', () => {
     it('should delete a post by ID', async() => {
-      const req = { params: { id: '1' } } as Request<{id: string}>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
-
       mockPostRepository.delete.mockResolvedValue();
 
       await postController.delete(req, res);
@@ -159,12 +119,6 @@ describe('Post Controller', () => {
 
     it('should throw an error if post deletion fails', async () => {
       mockPostRepository.delete.mockResolvedValue(ERRORS_KEY.NOT_FOUND);
-
-      const req = { params: { id: '1' } } as Request<{id: string}>;
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as Partial<Response> as Response;
 
       const error = {
         key: ERRORS_KEY.NOT_FOUND,

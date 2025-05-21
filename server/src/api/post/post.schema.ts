@@ -13,38 +13,29 @@ export const postEntitySchema = z.object({
   content: z.string({
     required_error: "Content is required",
   }).min(1, { message: "Content is too short" }).max(5000, { message: "Content is too long" }),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   author: z.string({
     required_error: "Author is required",
   }).min(1, { message: "Invalid author" }), // Refactoring with author Id
-})
+}).strict()
 
 export type PostEntity = z.infer<typeof postEntitySchema>;
 
 export const postDTOSchema = z.object({
-  id: z.string(),
+  _id: z.string().refine((id) => ObjectId.isValid(id), {
+    message: "Invalid post ID",
+  }),
   title: postEntitySchema.shape.title,
   description: postEntitySchema.shape.description,
   content: postEntitySchema.shape.content,
-  author: postEntitySchema.shape.author,
+  createdAt: postEntitySchema.shape.createdAt,
+  updatedAt: postEntitySchema.shape.updatedAt,
+  author: postEntitySchema.shape.author, // from Author 
 })
 
 export type PostDTO = z.infer<typeof postDTOSchema>;
 
-export const PostDTO = {
-  toDomainEntity(entity: PostEntity) {
-    const candidate: PostDTO = {
-      id: entity._id.toHexString(),
-      title: entity.title,
-      description: entity.description,
-      content: entity.content,
-      author: entity.author,
-    };
-
-    return postDTOSchema.safeParse(candidate);
-  }
-}
-
-// Add pagination
 export const postListDTOSchema = z.object({
   posts: z.array(postDTOSchema),
 })
@@ -57,12 +48,13 @@ export const postIdParamSchema = z.object({
   }),
 })
 
-export type PostIdParam = z.infer<typeof postIdParamSchema>;
 
-export const postCreateDtoSchema = postDTOSchema.omit({id: true})
+export const postCreateDtoSchema = postDTOSchema.omit({_id: true, createdAt: true, updatedAt: true})
 
 export type PostCreateDTO = z.infer<typeof postCreateDtoSchema>;
 
-export const postUpdateDtoSchema = postDTOSchema.partial().omit({id: true})
+export const postUpdateDtoSchema = postDTOSchema.partial().omit({_id: true})
 
 export type PostUpdateDTO = z.infer<typeof postUpdateDtoSchema>;
+
+export type PostIdParam = z.infer<typeof postIdParamSchema>;

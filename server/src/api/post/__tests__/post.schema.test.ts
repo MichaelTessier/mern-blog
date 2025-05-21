@@ -1,33 +1,23 @@
 import { ObjectId } from "mongodb";
-import { PostDTO, postDTOSchema, postEntitySchema, postIdParamSchema } from "../post.schema";
+import { postDTOSchema, postEntitySchema, postIdParamSchema } from "../post.schema";
+import { postData } from "../__data__";
 
 describe('Post Schema', () => {
 
   describe('postEntitySchema', () => {
     it('should validate post entity schema', () => {
-      const validPost = {
-        _id: new ObjectId(),
-        title: 'Valid Title',
-        description: 'Valid Description',
-        content: 'Valid Content',
-        author: 'Valid Author',
-      }
-      
-      const result = postEntitySchema.safeParse(validPost);
+      const result = postEntitySchema.safeParse(postData.postEntity);
       
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(validPost) 
+      expect(result.data).toEqual(postData.postEntity) 
     })
 
     it('should invalidate post entity schema with missing fields', () => {
-      const invalidPost = {
-        _id: new ObjectId(),
-        title: '',
-        description: 'Valid Description',
-        content: 'Valid Content',
-      }
+      const result = postEntitySchema.safeParse({
+        ...postData.postEntity,
+        title: ''
+      });
 
-      const result = postEntitySchema.safeParse(invalidPost);
       expect(result.success).toBe(false);  
       expect(result.error?.issues[0].message).toEqual('Title is too short');
     })
@@ -35,65 +25,20 @@ describe('Post Schema', () => {
 
   describe('postDTOSchema', () => {
     it('should validate post DTO schema', () => {
-      const validPostDTO = {
-        id: '1',
-        title: 'Valid Title',
-        description: 'Valid Description',
-        content: 'Valid Content', 
-        author: 'Valid Author',
-      } 
+      const result = postDTOSchema.safeParse(postData.postDTO);
 
-      const result = postDTOSchema.safeParse(validPostDTO);
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(validPostDTO);
+      expect(result.data).toEqual(postData.postDTO);
     })
 
     it('should invalidate post DTO schema with missing fields', () => {
-      const invalidPostDTO = {
-        id: '1',
+      const result = postDTOSchema.safeParse({
+        ...postData.postDTO,
         title: '',
-        description: 'Valid Description',
-        content: 'Valid Content',
-      }
+      });
 
-      const result = postDTOSchema.safeParse(invalidPostDTO);
       expect(result.success).toBe(false);
       expect(result.error?.issues[0].message).toEqual('Title is too short');
-    })
-  })
-
-  describe('PostDTO', () => {
-    it('should convert post entity to DTO', () => {
-      const validPost = {
-        _id: new ObjectId('6815c9389fc5c3af20b10f13'),
-        title: 'Valid Title',
-        description: 'Valid Description',
-        content: 'Valid Content',
-        author: 'Valid Author',
-      }
-
-      const parsedPost = PostDTO.toDomainEntity(validPost);
-      expect(parsedPost.success).toBe(true);
-      expect(parsedPost.data).toEqual({
-         "author": "Valid Author",
-         "content": "Valid Content",
-         "description": "Valid Description",
-         "id": "6815c9389fc5c3af20b10f13",
-         "title": "Valid Title",
-      })
-    })
-
-    it('should invalidate post entity to DTO conversion with invalid data', () => {
-      const invalidPost = {
-        _id: new ObjectId('6815c9389fc5c3af20b10f13'),
-        title: '',
-        description: 'Valid Description',
-        content: 'Valid Content',
-        author: 'Valid Author',
-      }
-      const parsedPost = PostDTO.toDomainEntity(invalidPost);
-      expect(parsedPost.success).toBe(false);
-      expect(parsedPost.error?.issues[0].message).toEqual('Title is too short');
     })
   })
 

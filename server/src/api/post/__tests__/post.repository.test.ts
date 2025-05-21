@@ -1,30 +1,41 @@
-import { vi, describe, it, expect, afterEach } from "vitest";
+import { vi, describe, it, expect, afterEach, Mock } from "vitest";
 import { PostRepository } from '@/api/post/post.repository';
 import { mockDb } from '@/services/mongodb/__mocks__/mongodb.service'; 
-
+import { PostMapper } from '@/api/post/post.mapper';
 import { ObjectId } from 'mongodb';
 import { ERRORS_KEY } from "@/api/errorHandler";
-import { PostDTO } from "../post.schema";
+import { postData } from "../__data__";
+import { postDTOSchema } from '../post.schema';
 
 vi.mock('@/services/mongodb/mongodb.service');
+
+vi.mock('../post.schema', async (importActual) => {
+  const actual = await importActual() as any;
+
+  return {
+    ...actual,
+    postDTOSchema: {
+      safeParse: vi.fn().mockReturnValue({ success: true, data: { mocked: true } }),
+    }
+  };
+});
 
 describe('PostRepository', () => {
   const repository = new PostRepository();
 
   beforeEach(() => {
+    vi.useFakeTimers()
+    
     mockDb.find.mockReset();
     mockDb.findOne.mockReset();
     mockDb.insertOne.mockReset();
     mockDb.deleteOne.mockReset();
-
-    vi.spyOn(PostDTO, 'toDomainEntity').mockImplementation(() => ({
-      success: true,
-      data: { id: '6813c4c9fd33f0e52d13dc68', title: 'Test', description: 'Test', content: 'Test', author: '123' },
-    }));
   });
-
+  
   afterEach(() => {
     vi.clearAllMocks();
+    
+    vi.useRealTimers();
   })
 
   describe('findPosts', () => {
@@ -38,17 +49,15 @@ describe('PostRepository', () => {
       expect(mockDb.find).toHaveBeenCalled();
     });
 
-
     it('should return VALIDATION error if DTO validation fails', async () => {
       mockDb.find.mockReturnValue({ toArray: vi.fn().mockResolvedValue([{ title: 'Test' }]) });
-
-      vi.spyOn(PostDTO, 'toDomainEntity').mockReturnValue({
-        success: false,
-        error: { issues: [{ message: 'Invalid data', code: 'custom', path: [] }] } as any,
-      });
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: false });
+      vi.spyOn(PostMapper, 'toDTO').mockImplementation(() => ({} as any));
 
       const result = await repository.findPosts();
       
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
+      expect(PostMapper.toDTO).toHaveBeenCalled();
       expect(mockDb.find).toHaveBeenCalled();
       expect(result).toEqual({
         "posts": [],
@@ -60,18 +69,21 @@ describe('PostRepository', () => {
   describe('create', () => {
     it('should insert a new post', async () => {
       mockDb.insertOne.mockResolvedValue({ acknowledged: true, insertedId: '6813c4c9fd33f0e52d13dc68'});
-      
-      const result = await repository.create({ title: 'Test', description: 'Test', content: 'Test', author: '123' });
-      
-      expect(result).toHaveProperty('id');
 
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: true, data: postData.postEntity });
+      
+      const result = await repository.create(postData.postCreateDTO);
+      
+      expect(result).toHaveProperty('_id');
+
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
       expect(mockDb.insertOne).toHaveBeenCalled();
     });
 
     it('should throw an error if database query fails', async () => {
       mockDb.insertOne.mockRejectedValue(new Error('Database error')); 
   
-      await expect(repository.create({ title: 'Test', description: 'Test', content: 'Test', author: '123' })).rejects.toThrow('Database error');
+      await expect(repository.create(postData.postCreateDTO)).rejects.toThrow('Database error');
     });
 
     it('should return NOT_FOUND if post does not exist', async () => {
@@ -80,7 +92,7 @@ describe('PostRepository', () => {
         insertedId: null,
       }); 
   
-      const result = await repository.create({ title: 'Test', description: 'Test', content: 'Test', author: '123' });
+      const result = await repository.create(postData.postCreateDTO);
   
       expect(result).toEqual(ERRORS_KEY.CONFLICT);
     });
@@ -88,13 +100,14 @@ describe('PostRepository', () => {
     it('should return VALIDATION error if DTO validation fails', async () => {
       mockDb.insertOne.mockResolvedValue({ acknowledged: true, insertedId: '123' });
       
-      vi.spyOn(PostDTO, 'toDomainEntity').mockReturnValue({
-        success: false,
-        error: { issues: [{ message: 'Invalid data', code: 'custom', path: [] }] } as any,
-      });
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: false });
 
-      const result = await repository.create({ title: 'Test', description: 'Test', content: 'Test', author: '123' });
+      vi.spyOn(PostMapper, 'toDTO').mockImplementation(() => ({} as any));
+
+      const result = await repository.create(postData.postCreateDTO);
   
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
+      expect(PostMapper.toDTO).toHaveBeenCalled();
       expect(result).toEqual(ERRORS_KEY.VALIDATION);
     });
 
@@ -102,14 +115,20 @@ describe('PostRepository', () => {
 
   describe('findPostById', () => {
     it('should find a post by ID', async () => {
-      const _id = new ObjectId('6813c4c9fd33f0e52d13dc68')
-      const mockPost = { _id, title: 'Test', description: 'Test', content: 'Test', author: '123' };
-      mockDb.findOne.mockResolvedValue(mockPost);
-      const result = await repository.findPostById('6813c4c9fd33f0e52d13dc68');
-      
-      expect(mockDb.findOne).toHaveBeenCalledWith({ _id });  
+      mockDb.findOne.mockResolvedValue(postData.postEntity);
 
-      expect(result).toEqual({ id: '6813c4c9fd33f0e52d13dc68', title: 'Test', description: 'Test', content: 'Test', author: '123' });
+      const mockPost = {
+        ...postData.postEntity,
+        _id: postData.postEntity._id.toString(),
+      };
+
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: true, data: mockPost});
+
+      const result = await repository.findPostById(postData.postEntity._id.toString());
+      
+      expect(mockDb.findOne).toHaveBeenCalledWith({ _id: postData.postEntity._id });  
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
+      expect(result).toEqual(mockPost);
     });
 
     it('should return NOT_FOUND if post does not exist', async () => {
@@ -124,19 +143,16 @@ describe('PostRepository', () => {
 
 
     it('should return VALIDATION error if DTO validation fails', async () => {
-      const _id = new ObjectId('6813c4c9fd33f0e52d13dc68');
-      const mockPost = { _id, title: 'Test', description: 'Test', content: 'Test', author: '123' };
-  
-      mockDb.findOne.mockResolvedValue(mockPost);
-      
-      vi.spyOn(PostDTO, 'toDomainEntity').mockReturnValue({
-        success: false,
-        error: { issues: [{ message: 'Invalid data', code: 'custom', path: [] }] } as any,
-      });
+      mockDb.findOne.mockResolvedValue(postData.postEntity);
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: false });
+      vi.spyOn(PostMapper, 'toDTO').mockImplementation(() => ({} as any));
 
-      const result = await repository.findPostById('6813c4c9fd33f0e52d13dc68');
+
+      const result = await repository.findPostById(postData.postEntity._id.toString());
   
-      expect(mockDb.findOne).toHaveBeenCalledWith({ _id });
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
+      expect(PostMapper.toDTO).toHaveBeenCalled();
+      expect(mockDb.findOne).toHaveBeenCalledWith({ _id: postData.postEntity._id });
       expect(result).toEqual(ERRORS_KEY.VALIDATION);
     });
   
@@ -149,23 +165,42 @@ describe('PostRepository', () => {
 
   describe('update', () => {
     it('should update a post by ID', async () => {
-      const _id = new ObjectId('6813c4c9fd33f0e52d13dc68')
-      const mockPost = { _id, title: 'Test', description: 'Test', content: 'Test', author: '123' };
+      const _id = postData.postEntity._id
+      const postUpdate = { 
+        ...postData.postUpdateDTO,
+        updatedAt: new Date(), 
+      }
+
+      const mockPost = { 
+        ...postData.postEntity,
+        ...postUpdate,
+      }
+
       mockDb.findOneAndUpdate.mockResolvedValue(mockPost);
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: true, data: mockPost});
 
-      const result = await repository.update('6813c4c9fd33f0e52d13dc68', mockPost );
+      const result = await repository.update(_id.toString(), postData.postUpdateDTO ) as any;
       
-      expect(mockDb.findOneAndUpdate).toHaveBeenCalledWith({ _id }, { $set: mockPost }, { returnDocument: 'after' }); 
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
+      expect(mockDb.findOneAndUpdate).toHaveBeenCalledWith({ _id }, { 
+        $set: postUpdate
+      }, { returnDocument: 'after' }); 
 
-      expect(result).toEqual({ id: '6813c4c9fd33f0e52d13dc68', title: 'Test', description: 'Test', content: 'Test', author: '123' });
+      expect(result).toEqual(mockPost);
     });
 
     it('should return NOT_FOUND if post does not exist', async () => {
-      mockDb.findOneAndUpdate.mockResolvedValue(null); 
+      const _id = postData.postEntity._id
+      const postUpdate = { 
+        ...postData.postUpdateDTO,
+        updatedAt: new Date(), 
+      }
+
+      mockDb.findOneAndUpdate.mockResolvedValue(null);
   
-      const result = await repository.update('6813c4c9fd33f0e52d13dc68', { title: 'Test', description: 'Test', content: 'Test', author: '123' });
+      const result = await repository.update(_id.toString(), postData.postUpdateDTO);
   
-      expect(mockDb.findOneAndUpdate).toHaveBeenCalledWith({ _id: new ObjectId('6813c4c9fd33f0e52d13dc68') }, { $set: { title: 'Test', description: 'Test', content: 'Test', author: '123' } }, { returnDocument: 'after' });
+      expect(mockDb.findOneAndUpdate).toHaveBeenCalledWith({ _id }, { $set: postUpdate }, { returnDocument: 'after' });
 
       expect(result).toEqual(ERRORS_KEY.NOT_FOUND);
     });
@@ -176,20 +211,24 @@ describe('PostRepository', () => {
       await expect(repository.update('6813c4c9fd33f0e52d13dc68', { title: 'Test', description: 'Test', content: 'Test', author: '123' })).rejects.toThrow('Database error');
     });
 
-    it('should return VALIDATION error if DTO validation fails', async () => {
-      const _id = new ObjectId('6813c4c9fd33f0e52d13dc68');
-      const mockPost = { _id, title: 'Test', description: 'Test', content: 'Test', author: '123' };
+    it('should return VALIDATION error if DTO validation fails', async () => { 
+      const _id = postData.postEntity._id
+      const postUpdate = { 
+        ...postData.postUpdateDTO,
+        updatedAt: new Date(), 
+      }
   
-      mockDb.findOneAndUpdate.mockResolvedValue(mockPost);
+      mockDb.findOneAndUpdate.mockResolvedValue(postUpdate);
       
-      vi.spyOn(PostDTO, 'toDomainEntity').mockReturnValue({
-        success: false,
-        error: { issues: [{ message: 'Invalid data', code: 'custom', path: [] }] } as any,
-      });
+      vi.spyOn(PostMapper, 'toDTO').mockImplementation(() => ({} as any));
+      (postDTOSchema.safeParse as Mock).mockReturnValueOnce({ success: false});
 
-      const result = await repository.update('6813c4c9fd33f0e52d13dc68', mockPost );
+
+      const result = await repository.update(_id.toString(), postUpdate );
   
-      expect(mockDb.findOneAndUpdate).toHaveBeenCalledWith({ _id }, { $set: mockPost }, { returnDocument: 'after' });
+      expect(postDTOSchema.safeParse).toHaveBeenCalled();
+      expect(PostMapper.toDTO).toHaveBeenCalled();
+      expect(mockDb.findOneAndUpdate).toHaveBeenCalledWith({ _id }, { $set: postUpdate }, { returnDocument: 'after' });
       expect(result).toEqual(ERRORS_KEY.VALIDATION);
     });
   })

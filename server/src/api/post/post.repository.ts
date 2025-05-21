@@ -1,8 +1,10 @@
 import { LoggerService } from "@/services/logger/logger.service";
 import { database } from "@/services/mongodb/mongodb.service";
 import { Db, ObjectId } from "mongodb";
-import { PostEntity, PostDTOList, PostDTO, PostCreateDTO, PostUpdateDTO } from "./post.schema";
+import { PostEntity, PostDTOList, PostDTO, PostCreateDTO, PostUpdateDTO, postDTOSchema } from "./post.schema";
 import { ErrorKey, ERRORS_KEY } from "../errorHandler";
+import { PostMapper } from "./post.mapper";
+
 export class PostRepository {
   private logger: LoggerService;
   private db: Db
@@ -20,7 +22,7 @@ export class PostRepository {
     this.logger.info(`Fetched ${data.length} posts`);
 
     const posts = data?.map((post) => {
-      const postDto = PostDTO.toDomainEntity(post)
+      const postDto = postDTOSchema.safeParse(PostMapper.toDTO(post))
 
       if (!postDto.success) {
         this.logger.error(`PostDTO validation failed: ${postDto.error}`);
@@ -43,7 +45,7 @@ export class PostRepository {
       return ERRORS_KEY.NOT_FOUND;
     }
 
-    const postDto = PostDTO.toDomainEntity(data)
+    const postDto = postDTOSchema.safeParse(PostMapper.toDTO(data))
 
     if(!postDto.success) {
       this.logger.error(`PostDTO validation failed: ${postDto.error}`);
@@ -54,10 +56,7 @@ export class PostRepository {
   }
 
   create = async(post: PostCreateDTO): Promise<PostDTO | ErrorKey> => {
-    const postEntity = {
-      ...post,
-      _id: new ObjectId(),
-    }
+    const postEntity = PostMapper.toCreateEntity(post);
 
     const data = await this.getPostsCollection().insertOne(postEntity);
 
@@ -66,7 +65,7 @@ export class PostRepository {
       return ERRORS_KEY.CONFLICT;
     }
 
-    const postDto = PostDTO.toDomainEntity(postEntity)
+    const postDto = postDTOSchema.safeParse(PostMapper.toDTO(postEntity))
 
     if(!postDto.success) {
       this.logger.error(`PostDTO validation failed: ${postDto.error}`);
@@ -82,7 +81,7 @@ export class PostRepository {
   update = async(id: string, post: PostUpdateDTO) : Promise<PostDTO | ErrorKey> => {
     const data = await this.getPostsCollection().findOneAndUpdate(
       { _id: new ObjectId(id) },
-      { $set: post },
+      { $set: PostMapper.toUpdateEntity(post) },
       { returnDocument: "after" }
     )
 
@@ -91,7 +90,7 @@ export class PostRepository {
       return ERRORS_KEY.NOT_FOUND;
     }
 
-    const postDto = PostDTO.toDomainEntity(data)
+    const postDto = postDTOSchema.safeParse(PostMapper.toDTO(data))
 
     if(!postDto.success) {
       this.logger.error(`PostDTO validation failed: ${postDto.error}`);
